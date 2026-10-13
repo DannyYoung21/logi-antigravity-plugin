@@ -80,8 +80,15 @@ The Developer may update this Agreement. The current version is published at
 https://github.com/DannyYoung21/logi-antigravity-plugin/blob/main/EULA.md, with the effective date shown above.
 Continuing to use the Plugin after an update means you accept the updated Agreement.
 
-Mandatory consumer protection laws of your country of residence remain unaffected. If any provision of this
-Agreement is held invalid or unenforceable, the remaining provisions stay in full effect.
+This Agreement is governed by the laws of the Federal Republic of Germany, excluding the UN Convention on
+Contracts for the International Sale of Goods (CISG). If you are a consumer, this choice of law does not deprive
+you of the protection of mandatory provisions of the law of the country where you have your habitual residence.
+
+If you are a merchant (Kaufmann), a legal entity under public law or a special fund under public law, or if you
+have no general place of jurisdiction in Germany, the place of jurisdiction for all disputes arising from this
+Agreement is the Developer's place of residence in Germany.
+
+If any provision of this Agreement is held invalid or unenforceable, the remaining provisions stay in full effect.
 
 ## 10. Contact
 
