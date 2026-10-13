@@ -67,3 +67,5 @@ A Debug build registers the plugin with the Logi Plugin Service for development.
 ## License
 
 [MIT](LICENSE) © 2026 Daniele Mazzotta
+
+Use of the plugin is also subject to the [End User License Agreement](EULA.md).
