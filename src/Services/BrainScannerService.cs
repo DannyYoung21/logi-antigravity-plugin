@@ -8,6 +8,7 @@ namespace Loupedeck.AntigravityPlugin.Services
     using System.Linq;
     using System.Text.Json;
     using System.Threading;
+    using Loupedeck.AntigravityPlugin.Helpers;
     using Loupedeck.AntigravityPlugin.Models;
 
     // Discovers Antigravity sessions (Antigravity app: ~/.gemini/antigravity, Antigravity IDE:
@@ -21,6 +22,7 @@ namespace Loupedeck.AntigravityPlugin.Services
         private static readonly TimeSpan SessionWindow = TimeSpan.FromHours(48);
         private static readonly TimeSpan CandidateWindow = TimeSpan.FromDays(7);
         private static readonly TimeSpan ProcessCheckInterval = TimeSpan.FromSeconds(2);
+        private const String SummariesQuery = "SELECT conversation_id, title, workspace_uris, not_fully_idle FROM conversation_summaries;";
 
         private readonly DataSource[] _sources;
         private readonly Timer _pollTimer;
@@ -307,10 +309,17 @@ namespace Loupedeck.AntigravityPlugin.Services
         public void FocusAntigravityWindow() => ActivateApp(this.PreferredHost());
 
         // New conversation in the product of the last opened slot, via its own shortcut (Cmd+Shift+L in
-        // both the app and the IDE). Needs accessibility access for the Logi Plugin Service.
+        // both the app and the IDE, Ctrl+Shift+L on Windows). Needs accessibility access for the Logi Plugin Service on macOS.
         public void StartNewConversation()
         {
             var host = this.PreferredHost();
+            if (OperatingSystem.IsWindows())
+            {
+                WindowsPlatform.SendCtrlShiftShortcut(AppName(host), 'L');
+                PluginLog.Info($"[NewConversation] Shortcut sent to {AppName(host)}");
+                return;
+            }
+
             RunDetached("osascript",
                 "-e", $"tell application \"{AppName(host)}\" to activate",
                 "-e", "delay 0.4",
@@ -329,11 +338,26 @@ namespace Loupedeck.AntigravityPlugin.Services
 
         private static String AppName(AntigravityHost host) => host == AntigravityHost.Ide ? "Antigravity IDE" : "Antigravity";
 
-        private static void ActivateApp(AntigravityHost host) => RunDetached("open", "-a", AppName(host));
+        private static void ActivateApp(AntigravityHost host)
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                WindowsPlatform.ActivateApp(AppName(host));
+                return;
+            }
+            RunDetached("open", "-a", AppName(host));
+        }
 
         // Fallback via UI automation: only ever clicks a one-time approval, never "Always allow"
         private static void ClickAllowOnceButton()
         {
+            if (OperatingSystem.IsWindows())
+            {
+                // No UI automation fallback on Windows: approvals only go through the language server
+                PluginLog.Info("[AllowOnce] Nothing approved via language server");
+                return;
+            }
+
             const String script = """
                 tell application "System Events"
                     set appProc to missing value
@@ -618,7 +642,7 @@ namespace Loupedeck.AntigravityPlugin.Services
             return raw.Length > 40 ? raw.Substring(0, 40) : raw; // the tile wraps and shortens it
         }
 
-        // conversation_summaries.db via the sqlite3 CLI; only re-read when the database changed
+        // conversation_summaries.db via the sqlite3 CLI (winsqlite3 on Windows); only re-read when the database changed
         private static Dictionary<String, (String Title, String Workspace, Boolean NotFullyIdle)> GetDbSummaries(DataSource source)
         {
             if (!File.Exists(source.SummariesDbPath))
@@ -640,6 +664,17 @@ namespace Loupedeck.AntigravityPlugin.Services
             var dict = new Dictionary<String, (String, String, Boolean)>();
             try
             {
+                if (OperatingSystem.IsWindows())
+                {
+                    foreach (var row in WindowsPlatform.QuerySqlite(source.SummariesDbPath, SummariesQuery))
+                    {
+                        dict[row[0].Trim()] = (row[1].Trim(), row[2].Trim(), row[3].Trim() == "1");
+                    }
+                    source.DbSummaries = dict;
+                    source.DbSummariesStamp = stamp;
+                    return source.DbSummaries;
+                }
+
                 var psi = new ProcessStartInfo
                 {
                     FileName = "/usr/bin/sqlite3",
@@ -648,8 +683,7 @@ namespace Loupedeck.AntigravityPlugin.Services
                     RedirectStandardError = true,
                     CreateNoWindow = true
                 };
-                foreach (var arg in new[] { "-readonly", "-batch", "-list", "-separator", "|", source.SummariesDbPath,
-                    "SELECT conversation_id, title, workspace_uris, not_fully_idle FROM conversation_summaries;" })
+                foreach (var arg in new[] { "-readonly", "-batch", "-list", "-separator", "|", source.SummariesDbPath, SummariesQuery })
                 {
                     psi.ArgumentList.Add(arg);
                 }

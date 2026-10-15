@@ -7,10 +7,10 @@ homePageUrl: https://github.com/DannyYoung21/logi-antigravity-plugin
 supportPageUrl: https://github.com/DannyYoung21/logi-antigravity-plugin/issues
 copyright: Copyright © 2026 Daniele Mazzotta
 description: |
-  Live session status for Antigravity and Antigravity IDE on the Logitech MX Creative Keypad (macOS only):
+  Live session status for Antigravity and Antigravity IDE on the Logitech MX Creative Keypad (macOS and Windows):
   up to 16 session slots, Allow Once / Allow in Conversation / Deny, Stop and Resume, next waiting session,
   new conversation, token and context window usage, and 5h/7d limits for Gemini and third-party models (Claude, GPT).
-  Unofficial community plugin, not affiliated with or endorsed by Google. All data stays on your Mac.
+  Unofficial community plugin, not affiliated with or endorsed by Google. All data stays on your computer.
   Support: dannylabs.studio@gmail.com
 icon256x256: Icon256x256.png
 backgroundColor: 4280234834
@@ -20,6 +20,7 @@ supportedDevices:
     - MxCreativeKeypad
 pluginFileName: AntigravityPlugin.dll
 pluginFolderMac: bin
+pluginFolderWin: bin
 pluginCapabilities:
     - HasNoApplication
 minimumLoupedeckVersion: 6.0
