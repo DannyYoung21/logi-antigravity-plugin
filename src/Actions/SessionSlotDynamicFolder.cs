@@ -99,9 +99,12 @@ namespace Loupedeck.AntigravityControllerPlugin.Actions
             var session = this.Session;
             var quota = BrainScannerService.Instance.Quota;
 
-            // Limits of the provider the session's model belongs to (Gemini or Claude/GPT)
+            // Limits of the quota group the session's model belongs to (Gemini, Claude/GPT or Gemini 4)
             var group = session?.ModelGroup ?? QuotaGroup.Gemini;
             var limits = quota.For(group);
+
+            // Gemini 4 has no 5-hour limit: the reset key then counts down the weekly limit instead
+            var resetWindow = quota.IsLive && !limits.FiveHour.Available && limits.Weekly.Available ? "7d" : "5h";
 
             return actionParameter switch
             {
@@ -110,7 +113,8 @@ namespace Loupedeck.AntigravityControllerPlugin.Actions
                 "Context" => SessionTileRenderer.RenderContextKey(session, imageSize),
                 "FiveHourLimit" => SessionTileRenderer.RenderLimitKey(group, "5h", limits.FiveHour, quota.IsLive, imageSize),
                 "WeeklyLimit" => SessionTileRenderer.RenderLimitKey(group, "7d", limits.Weekly, quota.IsLive, imageSize),
-                "FiveHourResetTime" => SessionTileRenderer.RenderResetKey(group, "5h", limits.FiveHour, quota.IsLive, imageSize),
+                "FiveHourResetTime" => SessionTileRenderer.RenderResetKey(group, resetWindow,
+                    resetWindow == "7d" ? limits.Weekly : limits.FiveHour, quota.IsLive, imageSize),
                 "Refresh" => SessionTileRenderer.RenderRefreshKey(imageSize, BrainScannerService.Instance.IsSyncing),
                 "Stop" => SessionTileRenderer.RenderStopKey(
                     resume: session?.State == AgentSessionState.Stopped,

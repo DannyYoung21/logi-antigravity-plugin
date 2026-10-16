@@ -21,11 +21,12 @@ namespace Loupedeck.AntigravityControllerPlugin.Models
         Settled   // The session whose status changed most recently comes first.
     }
 
-    // Antigravity has one quota group for Gemini and one for third-party models (Claude, GPT-OSS)
+    // Antigravity quota groups: Gemini, third-party models (Claude, GPT-OSS) and Gemini 4 with its own limit
     public enum QuotaGroup
     {
         Gemini,
-        ThirdParty
+        ThirdParty,
+        Gemini4
     }
 
     // The two Antigravity products; each runs its own language server and keeps its own data folder
@@ -99,6 +100,8 @@ namespace Loupedeck.AntigravityControllerPlugin.Models
 
     public class QuotaWindow
     {
+        // False if Antigravity reports no such window for the group (Gemini 4 only has a weekly limit)
+        public Boolean Available { get; set; }
         public Double UsedPercent { get; set; }
         public DateTime? ResetTimeUtc { get; set; }
 
@@ -117,11 +120,20 @@ namespace Loupedeck.AntigravityControllerPlugin.Models
     {
         public QuotaGroupSummary Gemini { get; set; } = new();
         public QuotaGroupSummary ThirdParty { get; set; } = new();
+        public QuotaGroupSummary Gemini4 { get; set; } = new();
+
+        // Name of the Gemini 4 group as Antigravity reports it ("Gemini 4 Argon"); its models' labels start with it
+        public String Gemini4Name { get; set; } = String.Empty;
 
         // False until Antigravity answered once; tiles then show placeholders instead of 0%
         public Boolean IsLive { get; set; }
 
-        public QuotaGroupSummary For(QuotaGroup group) => group == QuotaGroup.ThirdParty ? this.ThirdParty : this.Gemini;
+        public QuotaGroupSummary For(QuotaGroup group) => group switch
+        {
+            QuotaGroup.ThirdParty => this.ThirdParty,
+            QuotaGroup.Gemini4 => this.Gemini4,
+            _ => this.Gemini
+        };
     }
 
     public class LiveTrajectoryInfo

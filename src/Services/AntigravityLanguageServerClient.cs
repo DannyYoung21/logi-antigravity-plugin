@@ -49,6 +49,8 @@ namespace Loupedeck.AntigravityControllerPlugin.Services
         private Boolean _appInForeground = true;
         private QuotaSummary _lastQuota;
         private DateTime _lastQuotaFetch = DateTime.MinValue;
+        private Dictionary<String, String> _modelLabels = new(StringComparer.OrdinalIgnoreCase);
+        private DateTime _lastModelLabelFetch = DateTime.MinValue;
 
         private sealed class CachedDetails
         {
@@ -128,14 +130,25 @@ namespace Loupedeck.AntigravityControllerPlugin.Services
 
             var quota = new QuotaSummary { IsLive = true };
             var thirdPartySeen = false;
+            var gemini4Seen = false;
 
             foreach (var group in groups.EnumerateArray())
             {
                 var name = GetString(group, "displayName");
 
-                // "Gemini Models" vs. "Claude and GPT models"
+                // "Gemini Models", "Claude and GPT models" and a versioned group with its own limit ("Gemini 4 Argon")
                 QuotaGroupSummary target;
-                if (name.Contains("Gemini", StringComparison.OrdinalIgnoreCase))
+                if (Regex.IsMatch(name, @"Gemini\s*\d", RegexOptions.IgnoreCase))
+                {
+                    if (gemini4Seen)
+                    {
+                        continue;
+                    }
+                    target = quota.Gemini4;
+                    quota.Gemini4Name = name;
+                    gemini4Seen = true;
+                }
+                else if (name.Contains("Gemini", StringComparison.OrdinalIgnoreCase))
                 {
                     target = quota.Gemini;
                 }
@@ -170,6 +183,7 @@ namespace Loupedeck.AntigravityControllerPlugin.Services
                         continue;
                     }
 
+                    slot.Available = true;
                     slot.UsedPercent = Math.Clamp(Math.Round((1.0 - remaining) * 100.0, 1), 0.0, 100.0);
                     if (DateTime.TryParse(GetString(bucket, "resetTime"), CultureInfo.InvariantCulture,
                             DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var reset))
@@ -180,6 +194,60 @@ namespace Loupedeck.AntigravityControllerPlugin.Services
             }
 
             return quota;
+        }
+
+        // Gemini 4 models have their own limit. Model ids are placeholders ("MODEL_PLACEHOLDER_M419"), so they are
+        // matched by their label ("Gemini 4 Argon (Low)"), which starts with the name of the Gemini 4 quota group.
+        private Boolean IsGemini4Model(LanguageServerConnection server, String model)
+        {
+            if (String.IsNullOrEmpty(model) || server == null)
+            {
+                return false;
+            }
+
+            Dictionary<String, String> labels;
+            Boolean refresh;
+            lock (this._lock)
+            {
+                labels = this._modelLabels;
+                refresh = (!labels.ContainsKey(model) && DateTime.UtcNow - this._lastModelLabelFetch > TimeSpan.FromMinutes(1)) ||
+                          DateTime.UtcNow - this._lastModelLabelFetch > TimeSpan.FromMinutes(30);
+                if (refresh)
+                {
+                    this._lastModelLabelFetch = DateTime.UtcNow;
+                }
+            }
+
+            if (refresh)
+            {
+                using var doc = this.Call(server, "GetCascadeModelConfigData", new { });
+                if (doc != null && doc.RootElement.TryGetProperty("clientModelConfigs", out var configs) && configs.ValueKind == JsonValueKind.Array)
+                {
+                    labels = new Dictionary<String, String>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var config in configs.EnumerateArray())
+                    {
+                        var id = config.TryGetProperty("modelOrAlias", out var alias) ? GetString(alias, "model") : "";
+                        if (id.Length > 0)
+                        {
+                            labels[id] = GetString(config, "label");
+                        }
+                    }
+                    lock (this._lock)
+                    {
+                        this._modelLabels = labels;
+                    }
+                }
+            }
+
+            if (!labels.TryGetValue(model, out var label) || label.Length == 0)
+            {
+                return false;
+            }
+
+            var groupName = this._lastQuota?.Gemini4Name;
+            return !String.IsNullOrEmpty(groupName)
+                ? label.StartsWith(groupName, StringComparison.OrdinalIgnoreCase)
+                : Regex.IsMatch(label, @"^Gemini\s*4\b", RegexOptions.IgnoreCase);
         }
 
         // ---------------------------------------------------------------- Sessions
@@ -331,10 +399,11 @@ namespace Loupedeck.AntigravityControllerPlugin.Services
 
         private void ReadLatestUsage(LiveTrajectoryInfo trajectory, List<JsonElement> steps, LiveTrajectoryDetails details)
         {
-            // Each step points at its generator metadata entry; the newest one holds the current usage
+            // Each step points at its generator metadata entry; the newest one holds the current usage.
+            // The JSON omits index 0 (proto default), so a step with step info but no index points at entry 0.
             var metadataIndex = steps
                 .Select(s => s.TryGetProperty("metadata", out var m) && m.TryGetProperty("sourceTrajectoryStepInfo", out var info)
-                    ? ReadInt64(info, "metadataIndex", -1)
+                    ? ReadInt64(info, "metadataIndex", 0)
                     : -1)
                 .DefaultIfEmpty(-1)
                 .Max();
@@ -372,7 +441,9 @@ namespace Loupedeck.AntigravityControllerPlugin.Services
                     details.ModelGroup = provider.Contains("ANTHROPIC", StringComparison.OrdinalIgnoreCase) ||
                                          provider.Contains("OPENAI", StringComparison.OrdinalIgnoreCase)
                         ? QuotaGroup.ThirdParty
-                        : QuotaGroup.Gemini;
+                        : this.IsGemini4Model(trajectory.Server, GetString(usage, "model"))
+                            ? QuotaGroup.Gemini4
+                            : QuotaGroup.Gemini;
                 }
             }
 

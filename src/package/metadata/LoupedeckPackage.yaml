@@ -1,7 +1,7 @@
 type: plugin4
 name: AntigravityController
 displayName: Antigravity Controller
-version: 1.2.0
+version: 1.3.0
 author: Daniele Mazzotta
 homePageUrl: https://github.com/DannyYoung21/logi-antigravity-plugin
 supportPageUrl: https://github.com/DannyYoung21/logi-antigravity-plugin/issues
@@ -9,7 +9,7 @@ copyright: Copyright © 2026 Daniele Mazzotta
 description: |
   Unofficial plugin that controls Antigravity and Antigravity IDE agents from the Logitech MX Creative Keypad (macOS only):
   up to 16 live session slots, Allow Once / Allow in Conversation / Deny, Stop and Resume, next waiting session,
-  new conversation, token and context window usage, and 5h/7d limits for Gemini and third-party models (Claude, GPT).
+  new conversation, token and context window usage, and 5h/7d limits for Gemini, Gemini 4 and third-party models (Claude, GPT).
   This is an unofficial community plugin, not affiliated with or endorsed by Google. All data stays on your Mac.
   Support: dannylabs.studio@gmail.com
 icon256x256: Icon256x256.png

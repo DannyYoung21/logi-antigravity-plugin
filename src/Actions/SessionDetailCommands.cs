@@ -182,7 +182,7 @@ namespace Loupedeck.AntigravityControllerPlugin.Actions
 
     // ---------------------------------------------------------------- Quota
 
-    // Antigravity quota groups: "Gemini Models" and "Claude and GPT models" (third party)
+    // Antigravity quota groups: "Gemini Models", "Claude and GPT models" (third party) and "Gemini 4 Argon"
     public abstract class QuotaCommand : LiveCommand
     {
         public enum Kind { FiveHour, Weekly, FiveHourReset, WeeklyReset }
@@ -191,7 +191,12 @@ namespace Loupedeck.AntigravityControllerPlugin.Actions
         private readonly Kind _kind;
 
         protected QuotaCommand(QuotaGroup group, Kind kind, String displayName, String description)
-            : base(displayName, description, group == QuotaGroup.Gemini ? "LIMITS: GEMINI" : "LIMITS: THIRD-PARTY (CLAUDE & GPT)")
+            : base(displayName, description, group switch
+            {
+                QuotaGroup.ThirdParty => "LIMITS: THIRD-PARTY (CLAUDE & GPT)",
+                QuotaGroup.Gemini4 => "LIMITS: GEMINI 4",
+                _ => "LIMITS: GEMINI"
+            })
         {
             this._group = group;
             this._kind = kind;
@@ -273,6 +278,23 @@ namespace Loupedeck.AntigravityControllerPlugin.Actions
     {
         public ThirdPartyWeeklyResetTimeCommand()
             : base(QuotaGroup.ThirdParty, Kind.WeeklyReset, "Third-Party 7d Reset Time (Claude/GPT)", "Time until the third-party weekly limit resets")
+        {
+        }
+    }
+
+    // Gemini 4 only has a weekly limit
+    public class Gemini4WeeklyLimitCommand : QuotaCommand
+    {
+        public Gemini4WeeklyLimitCommand()
+            : base(QuotaGroup.Gemini4, Kind.Weekly, "Gemini 4 7d Limit", "Used share of the separate weekly limit for Gemini 4 models")
+        {
+        }
+    }
+
+    public class Gemini4WeeklyResetTimeCommand : QuotaCommand
+    {
+        public Gemini4WeeklyResetTimeCommand()
+            : base(QuotaGroup.Gemini4, Kind.WeeklyReset, "Gemini 4 7d Reset Time", "Time until the Gemini 4 weekly limit resets")
         {
         }
     }

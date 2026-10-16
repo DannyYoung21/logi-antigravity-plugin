@@ -32,7 +32,12 @@ namespace Loupedeck.AntigravityControllerPlugin.Helpers
         public static BitmapColor GetUsageRingColor(Double percent) =>
             percent < 50.0 ? AccentGreen : percent < 80.0 ? new BitmapColor(234, 179, 8) : AccentRed;
 
-        public static String GroupLabel(QuotaGroup group) => group == QuotaGroup.ThirdParty ? "Claude/GPT" : "Gemini";
+        public static String GroupLabel(QuotaGroup group) => group switch
+        {
+            QuotaGroup.ThirdParty => "Claude/GPT",
+            QuotaGroup.Gemini4 => "Gemini 4",
+            _ => "Gemini"
+        };
 
         // ---------------------------------------------------------------- Session tile
 
@@ -166,9 +171,11 @@ namespace Loupedeck.AntigravityControllerPlugin.Helpers
         public static BitmapImage RenderLimitKey(QuotaGroup group, String window, QuotaWindow quota, Boolean isLive, PluginImageSize imageSize)
         {
             var title = $"{GroupLabel(group)} {window}";
-            return isLive
-                ? RenderGauge(imageSize, title, $"{quota.UsedPercent:0}%", quota.UsedPercent, GetUsageRingColor(quota.UsedPercent))
-                : RenderGauge(imageSize, title, "--", 0, TrackColor);
+            return !isLive
+                ? RenderGauge(imageSize, title, "--", 0, TrackColor)
+                : !quota.Available
+                    ? RenderGauge(imageSize, title, "n/a", 0, TrackColor)
+                    : RenderGauge(imageSize, title, $"{quota.UsedPercent:0}%", quota.UsedPercent, GetUsageRingColor(quota.UsedPercent));
         }
 
         private static BitmapImage RenderGauge(PluginImageSize imageSize, String title, String value, Double percent, BitmapColor ringColor)
@@ -223,6 +230,12 @@ namespace Loupedeck.AntigravityControllerPlugin.Helpers
             {
                 bb.DrawText("--:--", 0, valueY, w, valueH, TextWhite, 18);
                 bb.DrawText("Loading...", 0, captionY, w, captionH, TextDim, 13);
+                bb.FillRectangle(barMargin, barY, barW, barH, TrackColor);
+            }
+            else if (!quota.Available)
+            {
+                bb.DrawText("n/a", 0, valueY, w, valueH, TextDim, 20);
+                bb.DrawText("No Limit", 0, captionY, w, captionH, TextDim, 13);
                 bb.FillRectangle(barMargin, barY, barW, barH, TrackColor);
             }
             else if (quota.UsedPercent <= 0.0 || remaining == null || remaining.Value.TotalMinutes <= 0)

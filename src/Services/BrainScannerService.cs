@@ -487,8 +487,9 @@ namespace Loupedeck.AntigravityControllerPlugin.Services
                 .Select(kvp => $"{kvp.Key}:{kvp.Value.Id}:{kvp.Value.DisplayName}:{kvp.Value.State}:{kvp.Value.ModelGroup}:" +
                                $"{kvp.Value.InputTokens}:{kvp.Value.OutputTokens}:{kvp.Value.CacheReadTokens}:{kvp.Value.ContextUsedTokens}");
 
-            String Window(QuotaWindow w) => $"{w.UsedPercent:0.0}/{(Int32?)w.RemainingUntilReset?.TotalMinutes}";
-            var quotaPart = $"{quota.IsLive}|{Window(quota.Gemini.FiveHour)}|{Window(quota.Gemini.Weekly)}|{Window(quota.ThirdParty.FiveHour)}|{Window(quota.ThirdParty.Weekly)}";
+            String Window(QuotaWindow w) => $"{w.Available}/{w.UsedPercent:0.0}/{(Int32?)w.RemainingUntilReset?.TotalMinutes}";
+            var quotaPart = $"{quota.IsLive}|{Window(quota.Gemini.FiveHour)}|{Window(quota.Gemini.Weekly)}|{Window(quota.ThirdParty.FiveHour)}|{Window(quota.ThirdParty.Weekly)}|" +
+                            $"{Window(quota.Gemini4.FiveHour)}|{Window(quota.Gemini4.Weekly)}";
 
             return String.Join(";", parts) + "#" + quotaPart;
         }
