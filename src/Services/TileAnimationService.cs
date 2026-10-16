@@ -36,7 +36,7 @@ namespace Loupedeck.AntigravityControllerPlugin.Services
         private void CheckAnimationNeed()
         {
             var animate = BrainScannerService.Instance.Sessions.Any(s =>
-                s.State == AgentSessionState.Thinking || s.State == AgentSessionState.Permission);
+                s.State == AgentSessionState.Thinking || s.IsWaitingForUser);
 
             if (animate && !this._isRunning)
             {

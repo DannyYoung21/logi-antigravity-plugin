@@ -118,7 +118,7 @@ namespace Loupedeck.AntigravityControllerPlugin.Actions
                 "Refresh" => SessionTileRenderer.RenderRefreshKey(imageSize, BrainScannerService.Instance.IsSyncing),
                 "Stop" => SessionTileRenderer.RenderStopKey(
                     resume: session?.State == AgentSessionState.Stopped,
-                    active: session?.State == AgentSessionState.Thinking || session?.State == AgentSessionState.Permission,
+                    active: session?.State == AgentSessionState.Thinking || session?.IsWaitingForUser == true,
                     imageSize),
                 _ => this.GetButtonImage(imageSize)
             };
@@ -131,6 +131,9 @@ namespace Loupedeck.AntigravityControllerPlugin.Actions
 
             switch (actionParameter)
             {
+                case "AllowOnce" when session?.State == AgentSessionState.Choose:
+                    scanner.OpenSession(session);   // questions are answered in Antigravity
+                    break;
                 case "AllowOnce" when session != null:
                     scanner.AnswerPermission(session, PermissionDecision.AllowOnce);
                     break;

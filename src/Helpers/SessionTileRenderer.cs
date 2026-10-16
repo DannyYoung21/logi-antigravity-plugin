@@ -14,6 +14,7 @@ namespace Loupedeck.AntigravityControllerPlugin.Helpers
         public static readonly BitmapColor TileCompleteColor = new(22, 163, 74);  // Vibrant Emerald Green (#16A34A)
         public static readonly BitmapColor TilePermissionColor = new(234, 179, 8); // Vibrant Amber / Yellow (#EAB308)
         public static readonly BitmapColor TileErrorColor = new(185, 28, 28);     // Error Red (#B91C1C)
+        public static readonly BitmapColor TileChooseColor = new(124, 58, 237);   // Violet (#7C3AED): the agent asks you to choose
         public static readonly BitmapColor TextWhite = new(255, 255, 255);
         public static readonly BitmapColor TextDim = new(190, 210, 235);
         public static readonly BitmapColor TextMuted = new(130, 160, 195);
@@ -71,6 +72,7 @@ namespace Loupedeck.AntigravityControllerPlugin.Helpers
                 AgentSessionState.Thinking => Blend(PulseDim, PulseBright, breath),
                 AgentSessionState.Complete => TileCompleteColor,
                 AgentSessionState.Permission => TilePermissionColor,
+                AgentSessionState.Choose => TileChooseColor,
                 AgentSessionState.Error => TileErrorColor,
                 _ => TileBaseColor
             });
@@ -89,6 +91,7 @@ namespace Loupedeck.AntigravityControllerPlugin.Helpers
             {
                 AgentSessionState.Thinking => new BitmapColor(92, 38, 6),
                 AgentSessionState.Permission => new BitmapColor(38, 30, 10),
+                AgentSessionState.Choose => new BitmapColor(46, 16, 101),
                 AgentSessionState.Complete => new BitmapColor(15, 118, 54),
                 AgentSessionState.Error => new BitmapColor(220, 38, 38),
                 AgentSessionState.Stopped => new BitmapColor(100, 116, 139),
@@ -374,12 +377,17 @@ namespace Loupedeck.AntigravityControllerPlugin.Helpers
                 return bb.ToImage();
             }
 
-            bb.Clear(Blend(new BitmapColor(176, 132, 6), TilePermissionColor, breath));
+            // Amber for a permission request, violet for a question to choose an answer for (the next session decides)
+            var choose = waiting[0].State == AgentSessionState.Choose;
+            bb.Clear(choose
+                ? Blend(new BitmapColor(91, 33, 182), TileChooseColor, breath)
+                : Blend(new BitmapColor(176, 132, 6), TilePermissionColor, breath));
+            var textColor = choose ? TextWhite : TextDark;
 
             const Int32 titleH = 20, countH = 30, nameH = 20;
             var top = CenterTop(h, titleH + countH + nameH);
-            bb.DrawText("Waiting", 0, top, w, titleH, TextDark, 15);
-            bb.DrawText(waiting.Count.ToString(), 0, top + titleH, w, countH, TextDark, 26);
+            bb.DrawText(choose ? "Choose" : "Waiting", 0, top, w, titleH, textColor, 15);
+            bb.DrawText(waiting.Count.ToString(), 0, top + titleH, w, countH, textColor, 26);
 
             var name = waiting[0].DisplayName;
             var max = MaxChars(w, large ? 14 : 12);
@@ -387,7 +395,7 @@ namespace Loupedeck.AntigravityControllerPlugin.Helpers
             {
                 name = name.Substring(0, max - 1).TrimEnd() + "…";
             }
-            bb.DrawText(name, 2, top + titleH + countH, w - 4, nameH, TextDark, large ? 14 : 12);
+            bb.DrawText(name, 2, top + titleH + countH, w - 4, nameH, textColor, large ? 14 : 12);
 
             return bb.ToImage();
         }

@@ -87,7 +87,7 @@ namespace Loupedeck.AntigravityControllerPlugin.Services
 
         private Dictionary<Int32, String> Resort(IReadOnlyList<AntigravitySession> sessions, SlotOrderStrategy strategy, String heldKey)
         {
-            var ordered = sessions.OrderByDescending(s => s.State == AgentSessionState.Permission);
+            var ordered = sessions.OrderByDescending(s => s.IsWaitingForUser);
             ordered = strategy == SlotOrderStrategy.Settled
                 ? ordered.ThenByDescending(s => s.StatusSince)
                 : ordered.ThenByDescending(s => s.LastUpdated);

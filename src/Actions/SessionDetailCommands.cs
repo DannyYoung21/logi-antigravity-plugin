@@ -108,7 +108,7 @@ namespace Loupedeck.AntigravityControllerPlugin.Actions
     public class NextWaitingCommand : LiveCommand
     {
         public NextWaitingCommand()
-            : base("Next Waiting Session", "Lights up while a session waits for permission; press to jump to it (repeated presses cycle)", SessionGroup)
+            : base("Next Waiting Session", "Lights up while a session waits for permission or for you to choose an answer; press to jump to it (repeated presses cycle)", SessionGroup)
         {
             TileAnimationService.Instance.OnAnimationTick += _ =>
             {

@@ -10,7 +10,8 @@ namespace Loupedeck.AntigravityControllerPlugin.Models
         Complete,
         Error,
         Permission,
-        Stopped     // Stopped by the user; can be resumed
+        Stopped,    // Stopped by the user; can be resumed
+        Choose      // The agent asks the user a question with options (ask_question)
     }
 
     // How sessions claim slots (same model as the Claude Desktop plugin)
@@ -94,8 +95,12 @@ namespace Loupedeck.AntigravityControllerPlugin.Models
             AgentSessionState.Permission => "Permission",
             AgentSessionState.Error => "Error",
             AgentSessionState.Stopped => "Stopped",
+            AgentSessionState.Choose => "Choose",
             _ => "Idle"
         };
+
+        // Waits for the user: a permission request or a question to choose an answer for
+        public Boolean IsWaitingForUser => this.State == AgentSessionState.Permission || this.State == AgentSessionState.Choose;
     }
 
     public class QuotaWindow
@@ -163,6 +168,9 @@ namespace Loupedeck.AntigravityControllerPlugin.Models
         public Int64 ContextMaxTokens { get; set; }
         public QuotaGroup? ModelGroup { get; set; }
         public Boolean IsWaitingForUser { get; set; }
+
+        // The waiting step is a question with options, not a permission request
+        public Boolean IsAskingQuestion { get; set; }
 
         // The last response was cut off by the user (Antigravity IDE does not report a termination reason)
         public Boolean LastResponseCanceled { get; set; }

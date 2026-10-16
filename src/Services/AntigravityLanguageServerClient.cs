@@ -33,6 +33,7 @@ namespace Loupedeck.AntigravityControllerPlugin.Services
 
         private const String ServicePath = "exa.language_server_pb.LanguageServerService";
         private const String StepWaiting = "CORTEX_STEP_STATUS_WAITING";
+        private const String StepAskQuestion = "CORTEX_STEP_TYPE_ASK_QUESTION";
         private const String ResumeMessage = "Continue";
         private const Int32 RecentStepCount = 10;
         private static readonly TimeSpan QuotaCacheTime = TimeSpan.FromSeconds(10);
@@ -337,6 +338,7 @@ namespace Loupedeck.AntigravityControllerPlugin.Services
             var details = new LiveTrajectoryDetails
             {
                 IsWaitingForUser = steps.Any(s => GetString(s, "status") == StepWaiting),
+                IsAskingQuestion = steps.Any(s => GetString(s, "status") == StepWaiting && GetString(s, "type") == StepAskQuestion),
                 LastResponseCanceled = stopReason.Contains("CLIENT_STREAM_ERROR", StringComparison.OrdinalIgnoreCase) ||
                                        stopReason.Contains("CANCEL", StringComparison.OrdinalIgnoreCase)
             };
@@ -544,7 +546,8 @@ namespace Loupedeck.AntigravityControllerPlugin.Services
         private JsonObject BuildInteraction(LiveTrajectoryInfo trajectory, PermissionDecision decision)
         {
             var steps = this.GetRecentSteps(trajectory.Server, trajectory.CascadeId, trajectory.StepCount);
-            var step = steps?.LastOrDefault(s => GetString(s, "status") == StepWaiting);
+            // Questions (ask_question) are answered in Antigravity, never with a permission decision
+            var step = steps?.LastOrDefault(s => GetString(s, "status") == StepWaiting && GetString(s, "type") != StepAskQuestion);
             if (step == null || step.Value.ValueKind != JsonValueKind.Object)
             {
                 return null;

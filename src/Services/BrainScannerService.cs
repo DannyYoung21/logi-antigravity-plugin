@@ -65,6 +65,7 @@ namespace Loupedeck.AntigravityControllerPlugin.Services
             public String FirstPrompt = "";
             public String LatestStatus = "";
             public Boolean AsksQuestion;
+            public Boolean AsksPermission;
             public Int64 InputTokens;
             public Int64 OutputTokens;
             public Int64 CacheReadTokens;
@@ -186,12 +187,12 @@ namespace Loupedeck.AntigravityControllerPlugin.Services
             if (preferred?.State == AgentSessionState.Permission) return preferred;
             var active = this.GetActiveSession();
             if (active?.State == AgentSessionState.Permission) return active;
-            return this.GetWaitingSessions().FirstOrDefault();
+            return this.GetWaitingSessions().FirstOrDefault(s => s.State == AgentSessionState.Permission);
         }
 
-        // Waiting sessions, the one waiting longest first
+        // Sessions waiting for the user (permission or a choice), the one waiting longest first
         public List<AntigravitySession> GetWaitingSessions() =>
-            this.Sessions.Where(s => s.State == AgentSessionState.Permission).OrderBy(s => s.StatusSince).ToList();
+            this.Sessions.Where(s => s.IsWaitingForUser).OrderBy(s => s.StatusSince).ToList();
 
         // Answers the pending request. session == null answers every waiting session (Allow Once only).
         public void AnswerPermission(AntigravitySession session, PermissionDecision decision)
@@ -445,7 +446,7 @@ namespace Loupedeck.AntigravityControllerPlugin.Services
                 // but still running in the background, finished sessions turn Idle too; agents that still
                 // work or wait for permission keep showing it (they can still be answered from the keypad).
                 if (!client.IsRunning(s.Host) ||
-                    (!client.HasOpenWindow(s.Host) && s.State != AgentSessionState.Thinking && s.State != AgentSessionState.Permission))
+                    (!client.HasOpenWindow(s.Host) && s.State != AgentSessionState.Thinking && !s.IsWaitingForUser))
                 {
                     s.State = AgentSessionState.Idle;
                 }
@@ -567,13 +568,16 @@ namespace Loupedeck.AntigravityControllerPlugin.Services
             var status = info.LatestStatus;
             var isDone = status.Equals("DONE", StringComparison.OrdinalIgnoreCase);
             var isError = status.Equals("ERROR", StringComparison.OrdinalIgnoreCase);
-            var asksPermission = status.StartsWith("WAITING", StringComparison.OrdinalIgnoreCase) ||
-                                 status.Equals("PENDING_APPROVAL", StringComparison.OrdinalIgnoreCase) ||
-                                 (!isDone && !isError && info.AsksQuestion);
+            var asksChoice = !isDone && !isError && info.AsksQuestion;
+            var asksPermission = !asksChoice &&
+                                 (status.StartsWith("WAITING", StringComparison.OrdinalIgnoreCase) ||
+                                  status.Equals("PENDING_APPROVAL", StringComparison.OrdinalIgnoreCase) ||
+                                  (!isDone && !isError && info.AsksPermission));
             var isRunning = status.Equals("RUNNING", StringComparison.OrdinalIgnoreCase) ||
                             ((nowUtc - lastActive).TotalSeconds < 15.0 && notFullyIdle);
 
-            var state = asksPermission ? AgentSessionState.Permission
+            var state = asksChoice ? AgentSessionState.Choose
+                : asksPermission ? AgentSessionState.Permission
                 : isRunning ? AgentSessionState.Thinking
                 : isError ? AgentSessionState.Error
                 : isDone && nowUtc - lastActive < TimeSpan.FromHours(24) ? AgentSessionState.Complete
@@ -735,7 +739,7 @@ namespace Loupedeck.AntigravityControllerPlugin.Services
             var status = trajectory.Status;
             if (details?.IsWaitingForUser == true)
             {
-                s.State = AgentSessionState.Permission;
+                s.State = details.IsAskingQuestion ? AgentSessionState.Choose : AgentSessionState.Permission;
             }
             else if (trajectory.IsRunning)
             {
@@ -849,9 +853,13 @@ namespace Loupedeck.AntigravityControllerPlugin.Services
                     {
                         haveLatest = true;
                         info.LatestStatus = root.TryGetProperty("status", out var st) ? st.GetString() ?? "" : "";
-                        info.AsksQuestion = root.TryGetProperty("tool_calls", out var calls) && calls.ValueKind == JsonValueKind.Array &&
-                            calls.EnumerateArray().Any(tc => tc.TryGetProperty("function", out var fn) && fn.TryGetProperty("name", out var n) &&
-                                (n.GetString() ?? "") is var name && (name.Contains("question") || name.Contains("permission") || name.Contains("confirm")));
+                        var toolNames = root.TryGetProperty("tool_calls", out var calls) && calls.ValueKind == JsonValueKind.Array
+                            ? calls.EnumerateArray()
+                                .Select(tc => tc.TryGetProperty("function", out var fn) && fn.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "")
+                                .ToList()
+                            : new List<String>();
+                        info.AsksQuestion = toolNames.Any(name => name.Contains("question"));
+                        info.AsksPermission = toolNames.Any(name => name.Contains("permission") || name.Contains("confirm"));
                     }
 
                     if (root.TryGetProperty("type", out var type) && type.GetString() == "PLANNER_RESPONSE")
