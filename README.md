@@ -3,7 +3,7 @@
 # Antigravity Controller
 
 An unofficial Logi Actions SDK plugin that brings live [Antigravity](https://antigravity.google/) and Antigravity IDE
-agent sessions to the **Logitech MX Creative Keypad** (macOS).
+agent sessions to the **Logitech MX Creative Keypad** (macOS and Windows).
 
 > Unofficial community plugin. Not affiliated with or endorsed by Google or Logitech.
 > "Antigravity" and "Gemini" are trademarks of Google LLC.
@@ -25,7 +25,7 @@ Works with both the Antigravity app and Antigravity IDE.
 
 ## Requirements
 
-- macOS
+- macOS, or Windows 10/11
 - Logi Options+ with the Logi Plugin Service (version 6.0 or later)
 - Logitech MX Creative Keypad
 - Antigravity and/or Antigravity IDE
@@ -34,11 +34,12 @@ Works with both the Antigravity app and Antigravity IDE.
 
 **New Conversation** sends Antigravity's own shortcut (Cmd+Shift+L). macOS asks once to allow this:
 *System Settings → Privacy & Security → Accessibility → enable "Logi Plugin Service"*.
+On Windows it sends Ctrl+Shift+L and needs no extra permission.
 All other actions work without extra permissions.
 
 ## Privacy
 
-Everything stays on your Mac. The plugin only talks to the Antigravity language servers running locally
+Everything stays on your computer. The plugin only talks to the Antigravity language servers running locally
 (127.0.0.1) and reads Antigravity's local session folders. It sends no data to the internet and collects no analytics.
 
 ## Known limitations
@@ -52,7 +53,7 @@ Everything stays on your Mac. The plugin only talks to the Antigravity language 
 Found a bug or have a question? [Open an issue](https://github.com/DannyYoung21/logi-antigravity-plugin/issues)
 or write to **dannylabs.studio@gmail.com**.
 
-Please include your macOS version, Antigravity version (app or IDE), and what you pressed and expected.
+Please include your macOS or Windows version, Antigravity version (app or IDE), and what you pressed and expected.
 
 ## Building from source
 
