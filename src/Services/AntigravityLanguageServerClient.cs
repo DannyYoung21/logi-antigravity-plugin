@@ -10,6 +10,7 @@ namespace Loupedeck.AntigravityControllerPlugin.Services
     using System.Text.Json;
     using System.Text.Json.Nodes;
     using System.Text.RegularExpressions;
+    using Loupedeck.AntigravityControllerPlugin.Helpers;
     using Loupedeck.AntigravityControllerPlugin.Models;
 
     // One running Antigravity language server (the app starts one, the IDE one or more)
@@ -684,7 +685,10 @@ namespace Loupedeck.AntigravityControllerPlugin.Services
                 var servers = new List<LanguageServerConnection>();
                 try
                 {
-                    foreach (var line in RunTool("ps", "-ax -o pid,command").Split('\n'))
+                    var processes = OperatingSystem.IsWindows()
+                        ? WindowsPlatform.ListLanguageServers()
+                        : RunTool("ps", "-ax -o pid,command");
+                    foreach (var line in processes.Split('\n'))
                     {
                         var server = this.ParseServer(line);
                         if (server != null)
@@ -705,8 +709,15 @@ namespace Loupedeck.AntigravityControllerPlugin.Services
                 // "Foreground" while it shows a window (and its Dock icon), "UIElement" when running in the background
                 if (this._servers.Any(s => s.Host == AntigravityHost.App))
                 {
-                    var type = RunTool("lsappinfo", "info -only ApplicationType com.google.antigravity");
-                    this._appInForeground = !type.Contains("UIElement", StringComparison.OrdinalIgnoreCase);
+                    if (OperatingSystem.IsWindows())
+                    {
+                        this._appInForeground = WindowsPlatform.HasOpenWindow("Antigravity");
+                    }
+                    else
+                    {
+                        var type = RunTool("lsappinfo", "info -only ApplicationType com.google.antigravity");
+                        this._appInForeground = !type.Contains("UIElement", StringComparison.OrdinalIgnoreCase);
+                    }
                 }
                 return this._servers;
             }
@@ -733,14 +744,19 @@ namespace Loupedeck.AntigravityControllerPlugin.Services
                 return known;
             }
 
-            var host = line.Contains("Antigravity IDE.app", StringComparison.OrdinalIgnoreCase) || line.Contains("--app_data_dir antigravity-ide")
+            var host = line.Contains("Antigravity IDE.app", StringComparison.OrdinalIgnoreCase)
+                || line.Contains(@"\Antigravity IDE\", StringComparison.OrdinalIgnoreCase)
+                || line.Contains("--app_data_dir antigravity-ide")
                 ? AntigravityHost.Ide
                 : AntigravityHost.App;
 
-            var listening = RunTool("lsof", $"-a -p {pid} -iTCP -sTCP:LISTEN -P -n");
-            foreach (Match m in Regex.Matches(listening, @":(\d+)\s+\(LISTEN\)"))
+            var ports = OperatingSystem.IsWindows()
+                ? WindowsPlatform.GetListeningPorts(pid)
+                : Regex.Matches(RunTool("lsof", $"-a -p {pid} -iTCP -sTCP:LISTEN -P -n"), @":(\d+)\s+\(LISTEN\)")
+                    .Select(m => Int32.Parse(m.Groups[1].Value))
+                    .ToList();
+            foreach (var port in ports)
             {
-                var port = Int32.Parse(m.Groups[1].Value);
                 try
                 {
                     using var probe = this.Send(port, csrf, "GetAllCascadeTrajectories", new { });
