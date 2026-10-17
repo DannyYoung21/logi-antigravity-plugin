@@ -11,9 +11,9 @@ namespace Loupedeck.AntigravityControllerPlugin.Actions
         // Keys inside the folder (position 0 is the native Back button)
         private static readonly String[] DetailKeys =
         {
-            "AllowOnce", "ProjectStatus",
-            "FiveHourLimit", "WeeklyLimit", "Context",
-            "Refresh", "Stop", "FiveHourResetTime"
+            "Context", "ProjectStatus",
+            "FiveHourLimit", "FiveHourResetTime", "AllowOnce",
+            "WeeklyLimit", "WeeklyResetTime", "Stop"
         };
 
         private Boolean _isActive;
@@ -77,9 +77,9 @@ namespace Loupedeck.AntigravityControllerPlugin.Actions
 
         public override PluginDynamicFolderNavigation GetNavigationArea(DeviceType _) => PluginDynamicFolderNavigation.None;
 
-        // Row 0: Back, Allow once, Project status (opens the conversation)
-        // Row 1: 5h limit, 7d limit, Context
-        // Row 2: Refresh, Stop/Resume, 5h reset time
+        // Row 0: Back, Context, Project status (opens the conversation)
+        // Row 1: 5h limit, 5h reset time, Allow once
+        // Row 2: 7d limit, 7d reset time, Stop/Resume
         public override String[] GetButtonPressActionNames(DeviceType deviceType)
         {
             var names = new String[DetailKeys.Length + 1];
@@ -103,9 +103,6 @@ namespace Loupedeck.AntigravityControllerPlugin.Actions
             var group = session?.ModelGroup ?? QuotaGroup.Gemini;
             var limits = quota.For(group);
 
-            // Gemini 4 has no 5-hour limit: the reset key then counts down the weekly limit instead
-            var resetWindow = quota.IsLive && !limits.FiveHour.Available && limits.Weekly.Available ? "7d" : "5h";
-
             return actionParameter switch
             {
                 "AllowOnce" => SessionTileRenderer.RenderAllowOnceKey(session, imageSize),
@@ -113,9 +110,8 @@ namespace Loupedeck.AntigravityControllerPlugin.Actions
                 "Context" => SessionTileRenderer.RenderContextKey(session, imageSize),
                 "FiveHourLimit" => SessionTileRenderer.RenderLimitKey(group, "5h", limits.FiveHour, quota.IsLive, imageSize),
                 "WeeklyLimit" => SessionTileRenderer.RenderLimitKey(group, "7d", limits.Weekly, quota.IsLive, imageSize),
-                "FiveHourResetTime" => SessionTileRenderer.RenderResetKey(group, resetWindow,
-                    resetWindow == "7d" ? limits.Weekly : limits.FiveHour, quota.IsLive, imageSize),
-                "Refresh" => SessionTileRenderer.RenderRefreshKey(imageSize, BrainScannerService.Instance.IsSyncing),
+                "FiveHourResetTime" => SessionTileRenderer.RenderResetKey(group, "5h", limits.FiveHour, quota.IsLive, imageSize),
+                "WeeklyResetTime" => SessionTileRenderer.RenderResetKey(group, "7d", limits.Weekly, quota.IsLive, imageSize),
                 "Stop" => SessionTileRenderer.RenderStopKey(
                     resume: session?.State == AgentSessionState.Stopped,
                     active: session?.State == AgentSessionState.Thinking || session?.IsWaitingForUser == true,
@@ -147,7 +143,7 @@ namespace Loupedeck.AntigravityControllerPlugin.Actions
                 case "FiveHourLimit":
                 case "WeeklyLimit":
                 case "FiveHourResetTime":
-                case "Refresh":
+                case "WeeklyResetTime":
                     scanner.TriggerManualSync();
                     break;
             }
