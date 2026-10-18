@@ -191,14 +191,18 @@ namespace Loupedeck.AntigravityControllerPlugin.Helpers
         // appName is both the process name and the install folder, e.g. %LOCALAPPDATA%\Programs\Antigravity IDE\Antigravity IDE.exe
         public static Boolean HasOpenWindow(String appName) => FindMainWindow(appName) != IntPtr.Zero;
 
-        // Brings the app's main window to the front, or starts the app when it is not running
-        public static void ActivateApp(String appName)
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        // Brings the app's main window to the front, or starts the app when it is not running.
+        // Returns the window, or IntPtr.Zero when the app had to be started (no window yet)
+        public static IntPtr ActivateApp(String appName)
         {
             var hWnd = FindMainWindow(appName);
             if (hWnd == IntPtr.Zero)
             {
                 StartApp(appName);
-                return;
+                return IntPtr.Zero;
             }
 
             if (IsIconic(hWnd))
@@ -211,6 +215,7 @@ namespace Loupedeck.AntigravityControllerPlugin.Helpers
             keybd_event(VkMenu, 0, 0, UIntPtr.Zero);
             keybd_event(VkMenu, 0, KeyEventFKeyUp, UIntPtr.Zero);
             SetForegroundWindow(hWnd);
+            return hWnd;
         }
 
         private static IntPtr FindMainWindow(String appName)
@@ -267,11 +272,28 @@ namespace Loupedeck.AntigravityControllerPlugin.Helpers
         [DllImport("user32.dll", SetLastError = true)]
         private static extern UInt32 SendInput(UInt32 nInputs, Input[] pInputs, Int32 cbSize);
 
-        // Activates the app, waits for it to take focus and sends Ctrl+Shift+<key>
-        public static void SendCtrlShiftShortcut(String appName, Char key)
+        // Activates the app, waits for it to take focus and sends Ctrl+Shift+<key>. Sends nothing when the
+        // app had to be started or its window did not come to the front, so the shortcut never lands in
+        // another app. Returns whether it was sent
+        public static Boolean SendCtrlShiftShortcut(String appName, Char key)
         {
-            ActivateApp(appName);
-            Thread.Sleep(400);
+            var hWnd = ActivateApp(appName);
+            if (hWnd == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            var waited = 0;
+            while (GetForegroundWindow() != hWnd && waited < 1000)
+            {
+                Thread.Sleep(50);
+                waited += 50;
+            }
+            if (GetForegroundWindow() != hWnd)
+            {
+                return false;
+            }
+            Thread.Sleep(150); // let the window take the keyboard focus
 
             var vk = (UInt16)Char.ToUpperInvariant(key);
             var inputs = new[]
@@ -280,6 +302,7 @@ namespace Loupedeck.AntigravityControllerPlugin.Helpers
                 KeyInput(vk, true), KeyInput(VkShift, true), KeyInput(VkControl, true)
             };
             SendInput((UInt32)inputs.Length, inputs, Marshal.SizeOf<Input>());
+            return true;
         }
 
         private static Input KeyInput(UInt16 vk, Boolean up) =>
