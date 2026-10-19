@@ -316,8 +316,9 @@ namespace Loupedeck.AntigravityControllerPlugin.Services
             var host = this.PreferredHost();
             if (OperatingSystem.IsWindows())
             {
-                WindowsPlatform.SendCtrlShiftShortcut(AppName(host), 'L');
-                PluginLog.Info($"[NewConversation] Shortcut sent to {AppName(host)}");
+                PluginLog.Info(WindowsPlatform.SendCtrlShiftShortcut(AppName(host), 'L')
+                    ? $"[NewConversation] Shortcut sent to {AppName(host)}"
+                    : $"[NewConversation] {AppName(host)} was started or is not in front: shortcut not sent");
                 return;
             }
 
