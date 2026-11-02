@@ -11,14 +11,15 @@ agent sessions to the **Logitech MX Creative Keypad** (macOS and Windows).
 ## Features
 
 - **Up to 16 session slots** – one live tile per project, with a status pill
-  (Thinking, Permission, Complete, Stopped, Error, Idle) and a calm orange pulse while an agent works.
+  (Thinking, Permission, Choose, Complete, Stopped, Error, Idle) and a calm orange pulse while an agent works.
   Pressing a slot opens a folder with that session's details and controls.
 - **Allow Once / Allow in Conversation / Deny** – answer permission requests without leaving your keyboard.
+- **Choose** – shows when an agent asks you a question; press to jump to Antigravity and answer it there.
 - **Next Waiting Session** – lights up when an agent waits for you; press to jump to it.
 - **Stop / Resume** – stop running agents, then resume them with the same key.
 - **New Conversation** and **Open Antigravity**.
 - **Context** and **Tokens** – exact context window usage of the model in use, plus token counts.
-- **5h / 7d limits** – usage and reset time for Gemini and for third-party models (Claude, GPT).
+- **5h / 7d limits** – usage and reset time for Gemini, Gemini 4 (weekly only) and third-party models (Claude, GPT).
 - **Slot Order** – sticky slots, most recent activity first, or most recent status change first.
 
 Works with both the Antigravity app and Antigravity IDE.
@@ -66,6 +67,10 @@ logiplugintool verify AntigravityController_1_2.lplug4
 ```
 
 A Debug build registers the plugin with the Logi Plugin Service for development.
+
+## Credits
+
+Windows support by [Moloshow](https://github.com/Moloshow).
 
 ## License
 
